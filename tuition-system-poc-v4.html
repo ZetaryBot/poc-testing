@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>補習社出席管理系統 — 示範</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: 'Noto Sans TC', -apple-system, 'PingFang HK', sans-serif;
+    background: #f0f4f8; color: #1a1a1a; padding: 0;
+    min-height: 100vh;
+  }
+
+  .header {
+    background: linear-gradient(135deg, #1a73e8, #1557b0);
+    color: white; padding: 20px 18px 16px;
+  }
+  .header h1 { font-size: 20px; font-weight: 700; letter-spacing: 0.3px; }
+  .header p { font-size: 13px; opacity: 0.85; margin-top: 3px; line-height: 1.5; }
+  .header-badge {
+    display: inline-block; background: rgba(255,255,255,0.18);
+    font-size: 11px; padding: 3px 12px; border-radius: 20px; margin-top: 8px;
+  }
+
+  .flow-row {
+    display: flex; align-items: center; gap: 4px;
+    background: white; padding: 12px 14px;
+    border-bottom: 1px solid #e8eaed; overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .flow-item {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 12px; font-weight: 600; color: #444; white-space: nowrap;
+  }
+  .flow-item .icon-circle {
+    width: 28px; height: 28px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 13px; flex-shrink: 0;
+  }
+  .icon-circle.green { background: #e8f5e9; }
+  .icon-circle.blue { background: #e3f2fd; }
+  .icon-circle.orange { background: #fff3e0; }
+  .icon-circle.purple { background: #f3e5f5; }
+  .flow-arrow { color: #ccc; font-size: 14px; flex-shrink: 0; }
+
+  .tab-bar {
+    display: flex; background: white;
+    border-bottom: 1px solid #e0e0e0; overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    position: sticky; top: 0; z-index: 10;
+  }
+  .tab-btn {
+    flex: 1; min-width: 0;
+    padding: 14px 8px; border: none; background: transparent;
+    font-size: 13px; font-weight: 600; font-family: inherit;
+    color: #777; cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: all 0.15s; white-space: nowrap; text-align: center;
+  }
+  .tab-btn.active { color: #1a73e8; border-bottom-color: #1a73e8; background: #f8fbff; }
+
+  .month-picker {
+    display: flex; align-items: center; justify-content: space-between;
+    background: white; padding: 10px 14px;
+    border-bottom: 1px solid #e8eaed;
+  }
+  .month-picker .month-nav {
+    width: 36px; height: 36px; border-radius: 50%; border: none;
+    background: #f0f0f0; color: #555; font-size: 18px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: background 0.12s;
+    -webkit-user-select: none; user-select: none; touch-action: manipulation;
+  }
+  .month-picker .month-nav:active { background: #ddd; }
+  .month-picker .month-nav:disabled { opacity: 0.3; pointer-events: none; }
+  .month-picker .month-title {
+    font-size: 16px; font-weight: 700; color: #1a1a1a; letter-spacing: 0.5px;
+  }
+  .month-picker .month-indicator {
+    display: flex; gap: 5px; align-items: center; justify-content: center; margin-top: 4px;
+  }
+  .month-dot {
+    width: 6px; height: 6px; border-radius: 50%; background: #ddd;
+    transition: all 0.2s;
+  }
+  .month-dot.active { background: #1a73e8; width: 8px; height: 8px; }
+  .month-dot.has-data { background: #66bb6a; }
+  .month-dot.active.has-data { background: #1a73e8; }
+
+  .sheet-panel { display: none; }
+  .sheet-panel.active { display: block; }
+
+  .card {
+    background: white; border-radius: 12px; margin: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06); overflow: hidden;
+  }
+  .card-header {
+    padding: 12px 14px; font-size: 13px; font-weight: 600;
+    display: flex; justify-content: space-between; align-items: center;
+    background: #f8f9fa; border-bottom: 1px solid #e8eaed;
+  }
+  .card-header .tag {
+    font-size: 10px; font-weight: 600; padding: 2px 10px; border-radius: 10px;
+    background: #e8f5e9; color: #2e7d32;
+  }
+  .card-header .tag.orange { background: #fff3e0; color: #e65100; }
+
+  /* ===== WEEKLY CLASS GRID ===== */
+  .class-info-bar {
+    display: flex; gap: 16px; padding: 10px 14px;
+    background: #f8fbff; border-bottom: 1px solid #e8eaed;
+    font-size: 12px; color: #555; flex-wrap: wrap;
+  }
+  .class-info-bar span { display: flex; align-items: center; gap: 4px; }
+
+  .student-row {
+    display: flex; align-items: center; padding: 0 14px;
+    border-bottom: 1px solid #f0f0f0; min-height: 48px;
+  }
+  .student-row:last-child { border-bottom: none; }
+  .student-row:hover { background: #f8fbff; }
+  .student-row .name { width: 72px; flex-shrink: 0; font-size: 14px; font-weight: 600; color: #333; }
+
+  .student-row .day-grid {
+    display: flex; gap: 4px; flex: 1; overflow-x: auto; padding: 8px 0;
+    -webkit-overflow-scrolling: touch;
+  }
+  .day-btn {
+    min-width: 48px; height: 40px; border-radius: 8px; border: 1.5px solid #e0e0e0;
+    background: white; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    transition: all 0.12s; flex-shrink: 0;
+    -webkit-user-select: none; user-select: none; touch-action: manipulation;
+    padding: 0 6px;
+  }
+  .day-btn:active { transform: scale(0.92); }
+  .day-btn .d-day { font-size: 10px; font-weight: 600; line-height: 1.2; }
+  .day-btn .d-icon { font-size: 16px; line-height: 1.2; margin-top: 1px; }
+  .day-btn.present { background: #e8f5e9; border-color: #66bb6a; }
+  .day-btn.present .d-day { color: #2e7d32; }
+  .day-btn.absent { background: #ffebee; border-color: #ef9a9a; }
+  .day-btn.absent .d-day { color: #c62828; }
+  .day-btn.excused { background: #fff8e1; border-color: #ffd54f; }
+  .day-btn.excused .d-day { color: #f57f17; }
+  .day-btn.empty { border-color: #eee; }
+  .day-btn.empty .d-day { color: #ccc; }
+
+  .student-row .stat-col {
+    width: 44px; flex-shrink: 0; text-align: center; font-size: 13px; font-weight: 700; color: #1a73e8;
+  }
+  .student-row .stat-col.warn { color: #e65100; }
+  .student-row .stat-col.bad { color: #c62828; }
+
+  .marking-guide {
+    display: flex; gap: 12px; padding: 10px 14px;
+    background: #f8f9fa; border-top: 1px solid #e8eaed;
+    font-size: 11px; color: #888; flex-wrap: wrap; align-items: center;
+  }
+  .marking-guide span { display: flex; align-items: center; gap: 4px; }
+  .marking-guide .dot {
+    width: 18px; height: 18px; border-radius: 4px; display: inline-flex;
+    align-items: center; justify-content: center; font-size: 10px;
+    border: 1.5px solid #e0e0e0;
+  }
+  .marking-guide .dot.green { background: #e8f5e9; border-color: #66bb6a; color: #2e7d32; }
+  .marking-guide .dot.red { background: #ffebee; border-color: #ef9a9a; color: #c62828; }
+  .marking-guide .dot.yellow { background: #fff8e1; border-color: #ffd54f; color: #f57f17; }
+
+  /* ===== FEE TABLE ===== */
+  .fee-row {
+    display: flex; align-items: center; padding: 10px 14px;
+    border-bottom: 1px solid #f0f0f0; font-size: 13px;
+  }
+  .fee-row:last-child { border-bottom: none; }
+  .fee-row .f-name { width: 72px; flex-shrink: 0; font-weight: 600; }
+  .fee-row .f-rate { width: 60px; flex-shrink: 0; font-size: 11px; color: #999; }
+  .fee-row .f-detail { flex: 1; min-width: 0; font-size: 12px; color: #555; }
+  .fee-row .f-amount { width: 64px; flex-shrink: 0; text-align: right; font-weight: 600; }
+  .fee-row .f-status { width: 60px; flex-shrink: 0; text-align: center; font-size: 12px; }
+  .fee-row.overdue { background: #fff8e1; }
+  .fee-row.unpaid { background: #ffebee; }
+
+  .status-paid { color: #2e7d32; font-weight: 600; }
+  .status-unpaid { color: #c62828; font-weight: 600; }
+  .status-partial { color: #e65100; font-weight: 600; }
+
+  .totals {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    padding: 12px 14px; background: #f8f9fa;
+  }
+  .total-item { text-align: center; padding: 8px; border-radius: 8px; }
+  .total-item .label { font-size: 11px; color: #666; }
+  .total-item .num { font-size: 20px; font-weight: 700; margin-top: 2px; }
+  .total-item.green { background: #e8f5e9; }
+  .total-item.green .num { color: #2e7d32; }
+  .total-item.red { background: #ffebee; }
+  .total-item.red .num { color: #c62828; }
+  .total-item.orange { background: #fff3e0; }
+  .total-item.orange .num { color: #e65100; }
+  .total-item.blue { background: #e3f2fd; }
+  .total-item.blue .num { color: #1565c0; }
+
+  /* ===== STUDENT DETAIL ===== */
+  .student-detail { padding: 14px; }
+  .student-detail h4 { font-size: 14px; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+  .month-summary-row {
+    display: flex; align-items: center; padding: 8px 6px;
+    border-bottom: 1px solid #f5f5f5; font-size: 13px; cursor: pointer;
+    transition: background 0.12s; border-radius: 6px;
+  }
+  .month-summary-row:hover { background: #f0f7ff; }
+  .month-summary-row:last-child { border-bottom: none; }
+  .month-summary-row .ms-month { width: 44px; flex-shrink: 0; font-weight: 600; color: #333; text-align: center; }
+  .month-summary-row .ms-detail { flex: 1; font-size: 12px; color: #666; }
+  .month-summary-row .ms-fee { width: 56px; flex-shrink: 0; text-align: right; font-size: 13px; font-weight: 600; }
+  .month-summary-row .ms-status { width: 70px; flex-shrink: 0; text-align: right; font-size: 12px; }
+  .month-summary-row.current-month { background: #e3f2fd; border-radius: 6px; }
+
+  .student-pills {
+    display: flex; gap: 6px; padding: 10px 14px;
+    overflow-x: auto; border-bottom: 1px solid #e8eaed;
+    -webkit-overflow-scrolling: touch;
+  }
+  .student-pill {
+    flex: none; padding: 6px 14px; font-size: 12px; font-family: inherit;
+    border: 1.5px solid #ddd; border-radius: 20px;
+    background: white; color: #555; cursor: pointer;
+    transition: all 0.12s; font-weight: 500;
+    -webkit-user-select: none; user-select: none; touch-action: manipulation;
+  }
+  .student-pill:active { transform: scale(0.95); }
+  .student-pill.active { border-color: #1a73e8; background: #e3f2fd; color: #1a73e8; font-weight: 600; }
+
+  .benefits {
+    margin: 10px; padding: 16px;
+    background: linear-gradient(135deg, #e8f5e9, #f1f8e9);
+    border-radius: 12px;
+  }
+  .benefits h3 { font-size: 15px; color: #2e7d32; margin-bottom: 10px; }
+  .benefit-item { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; margin-bottom: 6px; color: #333; line-height: 1.5; }
+  .benefit-item .check { color: #2e7d32; font-weight: 700; flex-shrink: 0; }
+
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: #323232; color: white; padding: 12px 20px;
+    border-radius: 10px; font-size: 13px; font-weight: 500;
+    opacity: 0; transition: opacity 0.3s; pointer-events: none;
+    z-index: 100; white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  }
+  .toast.show { opacity: 1; }
+
+  @media (max-width: 400px) {
+    .student-row .name { width: 58px; font-size: 13px; }
+    .day-btn { min-width: 40px; height: 36px; }
+    .day-btn .d-day { font-size: 9px; }
+    .day-btn .d-icon { font-size: 14px; }
+    .student-row .stat-col { width: 36px; font-size: 12px; }
+    .fee-row .f-name { width: 58px; }
+    .fee-row .f-rate { width: 48px; }
+    .fee-row .f-amount { width: 54px; }
+    .header h1 { font-size: 18px; }
+    .tab-btn { font-size: 12px; padding: 12px 6px; }
+    .month-picker .month-title { font-size: 14px; }
+  }
+
+  @media (min-width: 768px) {
+    body { padding: 16px; background: #e8ecf0; }
+    .container { max-width: 800px; margin: 0 auto; }
+    .header { border-radius: 14px; }
+    .flow-row { border-radius: 14px; margin: 10px 0; border: none; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    .tab-bar { border-radius: 14px 14px 0 0; margin-top: 10px; }
+    .card { border-radius: 0 0 14px 14px; }
+    .benefits { border-radius: 14px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<!-- Header -->
+<div class="header">
+  <h1>📋 補習班出席與學費管理系統</h1>
+  <p>根據您現有的作業流程設計 — 每週一堂 · 自動統計 · 一覽表一目了然</p>
+  <span class="header-badge">⚡ 試玩版本 — 點擊按鈕即可體驗</span>
+</div>
+
+<!-- Flow -->
+<div class="flow-row">
+  <span class="flow-item"><span class="icon-circle green">📝</span> 每堂點名</span>
+  <span class="flow-arrow">›</span>
+  <span class="flow-item"><span class="icon-circle blue">📊</span> 自動計算出席</span>
+  <span class="flow-arrow">›</span>
+  <span class="flow-item"><span class="icon-circle orange">💰</span> 自動計算學費</span>
+  <span class="flow-arrow">›</span>
+  <span class="flow-item"><span class="icon-circle purple">🚨</span> 自動標記未繳費</span>
+</div>
+
+<!-- Tabs -->
+<div class="tab-bar" id="tabBar">
+  <button class="tab-btn active" data-tab="daily">📅 每堂點名</button>
+  <button class="tab-btn" data-tab="student">👤 學生紀錄</button>
+  <button class="tab-btn" data-tab="fee">💰 月結總表</button>
+</div>
+
+<!-- Month Picker -->
+<div class="month-picker">
+  <button class="month-nav" id="prevMonth">‹</button>
+  <div style="text-align:center;">
+    <div class="month-title" id="monthTitle">2026年10月</div>
+    <div class="month-indicator" id="monthDots"></div>
+  </div>
+  <button class="month-nav" id="nextMonth">›</button>
+</div>
+
+<!-- ========== TAB 1: DAILY ========== -->
+<div class="sheet-panel active" id="panel-daily">
+  <div class="card">
+    <div class="card-header">
+      <span>📅 每堂出席紀錄</span>
+      <span class="tag">點擊切換狀態</span>
+    </div>
+    <div class="class-info-bar" id="classInfoBar">
+      <span>📌 上課時間：每週六</span>
+      <span>📅 本月共 <strong id="totalClasses">4</strong> 堂</span>
+      <span>💰 每堂收費 $200</span>
+    </div>
+    <div class="card-body" id="dailyGrid"></div>
+    <div class="marking-guide">
+      <span><span class="dot green">✓</span> 出席</span>
+      <span><span class="dot red">✗</span> 缺席</span>
+      <span><span class="dot yellow">★</span> 合理缺席</span>
+      <span style="margin-left:auto;">👆 連續點擊切換</span>
+    </div>
+  </div>
+  <div class="benefits">
+    <h3>✅ 使用後您將獲得</h3>
+    <div class="benefit-item"><span class="check">✓</span> 每月無需再手動計算出席次數 — 系統自動統計</div>
+    <div class="benefit-item"><span class="check">✓</span> 誰未繳費一目瞭然 — 無需自行對帳</div>
+    <div class="benefit-item"><span class="check">✓</span> 合理缺席（病假、旅行）自動豁免該堂學費</div>
+    <div class="benefit-item"><span class="check">✓</span> 所有資料在同一個 Google 試算表，手機也能查看</div>
+    <div class="benefit-item"><span class="check">✓</span> 每月 1–2 小時的行政工作 → 縮短至 10–15 分鐘</div>
+    <div class="benefit-item"><span class="check">✓</span> 可以翻查以往任何月份的紀錄</div>
+  </div>
+</div>
+
+<!-- ========== TAB 2: STUDENT ========== -->
+<div class="sheet-panel" id="panel-student">
+  <div class="card">
+    <div class="card-header">
+      <span>👤 學生個人月結紀錄</span>
+      <span class="tag">📌 每堂點名後自動更新</span>
+    </div>
+    <div class="card-body">
+      <div class="student-pills" id="studentPills"></div>
+      <div id="studentDetail"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== TAB 3: FEE ========== -->
+<div class="sheet-panel" id="panel-fee">
+  <div class="card">
+    <div class="card-header" style="background:#fff3e0;">
+      <span>💰 月結收費總表</span>
+      <span class="tag orange">出席資料自動同步</span>
+    </div>
+    <div class="card-body" id="feeSummary"></div>
+    <div id="feeTotals" class="totals"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== STUDENTS =====
+const STUDENTS = [
+  { name: '陳小明', cls: 'P5 Eng', rate: 200 },
+  { name: '李小花', cls: 'P5 Eng', rate: 200 },
+  { name: '張偉',   cls: 'P5 Eng', rate: 200 },
+  { name: '王美儀', cls: 'P5 Eng', rate: 200 },
+  { name: '趙天佑', cls: 'F4 Math', rate: 250 },
+];
+
+// ===== MONTHS — 每週一堂，每月 3~5 堂 =====
+const MONTHS = [
+  {
+    key: '2026-06', label: '2026年6月', short: '6月',
+    // Jun 2026: Sat 6, 13, 20, 27 → 4堂
+    classes: [
+      { day: '6', dow: '六' }, { day: '13', dow: '六' },
+      { day: '20', dow: '六' }, { day: '27', dow: '六' }
+    ]
+  },
+  {
+    key: '2026-07', label: '2026年7月', short: '7月',
+    // Jul 2026: Sat 4, 11, 18, 25 → 4堂
+    classes: [
+      { day: '4', dow: '六' }, { day: '11', dow: '六' },
+      { day: '18', dow: '六' }, { day: '25', dow: '六' }
+    ]
+  },
+  {
+    key: '2026-08', label: '2026年8月', short: '8月',
+    // Aug 2026: Sat 1, 8, 15, 22, 29 → 5堂
+    classes: [
+      { day: '1', dow: '六' }, { day: '8', dow: '六' },
+      { day: '15', dow: '六' }, { day: '22', dow: '六' }, { day: '29', dow: '六' }
+    ]
+  },
+  {
+    key: '2026-09', label: '2026年9月', short: '9月',
+    // Sep 2026: Sat 5, 12, 19, 26 → 4堂
+    classes: [
+      { day: '5', dow: '六' }, { day: '12', dow: '六' },
+      { day: '19', dow: '六' }, { day: '26', dow: '六' }
+    ]
+  },
+  {
+    key: '2026-10', label: '2026年10月', short: '10月',
+    // Oct 2026: Sat 3, 10, 17, 24, 31 → 5堂
+    classes: [
+      { day: '3', dow: '六' }, { day: '10', dow: '六' },
+      { day: '17', dow: '六' }, { day: '24', dow: '六' }, { day: '31', dow: '六' }
+    ]
+  },
+  {
+    key: '2026-11', label: '2026年11月', short: '11月',
+    // Nov 2026: Sat 7, 14, 21, 28 → 4堂
+    classes: [
+      { day: '7', dow: '六' }, { day: '14', dow: '六' },
+      { day: '21', dow: '六' }, { day: '28', dow: '六' }
+    ]
+  },
+];
+
+let currentMonthIdx = 0; // start Jun
+
+// ===== DATA =====
+const attendanceDB = {};
+
+function initMonthData(key) {
+  if (!attendanceDB[key]) {
+    const m = MONTHS.find(x => x.key === key);
+    attendanceDB[key] = STUDENTS.map(() => m.classes.map(() => 0));
+  }
+}
+MONTHS.forEach(m => initMonthData(m.key));
+
+// ---- Jun (4堂, 當前月份) ----
+let a6 = attendanceDB['2026-06'];
+a6[0] = [1,1,1,1];            // 陳小明 all present
+a6[1] = [1,3,1,1];            // 李小花 1 excused
+a6[2] = [2,1,1,2];            // 張偉 2 absent
+a6[3] = [1,1,1,1];            // 王美儀 all present
+a6[4] = [1,2,1,2];            // 趙天佑 2 absent
+
+// ---- Jul (4堂) ----
+let a7 = attendanceDB['2026-07'];
+a7[0] = [1,1,1,1];
+a7[1] = [1,1,3,1];
+a7[2] = [2,2,1,1];
+a7[3] = [1,3,1,1];
+a7[4] = [2,1,2,1];
+
+// ---- Aug (5堂) ----
+let a8 = attendanceDB['2026-08'];
+a8[0] = [1,1,1,1,1];          // 陳小明 all present
+a8[1] = [1,1,3,1,1];          // 李小花 1 excused
+a8[2] = [2,1,1,2,2];          // 張偉
+a8[3] = [1,1,1,3,1];          // 王美儀 1 excused
+a8[4] = [1,2,1,2,1];          // 趙天佑
+
+// ---- Sep (4堂) ----
+let a9 = attendanceDB['2026-09'];
+a9[0] = [1,1,1,1];
+a9[1] = [1,1,1,3];
+a9[2] = [2,2,1,2];
+a9[3] = [1,1,1,1];
+a9[4] = [2,1,2,1];
+
+// ---- Oct (5堂) ----
+let a10 = attendanceDB['2026-10'];
+a10[0] = [1,1,1,1,1];
+a10[1] = [1,3,1,1,1];
+a10[2] = [2,2,1,1,2];
+a10[3] = [1,1,3,1,1];
+a10[4] = [1,2,1,2,2];
+
+// ---- Nov (4堂, 未開始) ----
+let a11 = attendanceDB['2026-11'];
+a11[0] = [1,1,0,0];
+
+// ===== HELPERS =====
+function getMonth() { return MONTHS[currentMonthIdx]; }
+
+function getStat(key, si) {
+  const a = attendanceDB[key][si];
+  const total = a.length;
+  const present = a.filter(v => v === 1).length;
+  const excused = a.filter(v => v === 3).length;
+  const absent = a.filter(v => v === 2).length;
+  const rate = STUDENTS[si].rate;
+  // Fee = rate × (total - excused)  i.e. only pay for non-excused classes
+  const due = rate * (total - excused);
+  return { total, present, excused, absent, rate, due };
+}
+
+function calcPayment(key, si) {
+  const stat = getStat(key, si);
+  const a = attendanceDB[key][si];
+  const allZero = a.every(v => v === 0);
+
+  if (allZero) return { paid: 0, text: '⏳ 待處理', cls: '' };
+
+  // Simulate real payment scenarios
+  if (si === 3) { // 王美儀 always unpaid
+    return { paid: 0, text: '🔴 未繳', cls: 'status-unpaid' };
+  }
+  if (stat.absent >= 3) {
+    const paid = Math.round(stat.due * 0.3);
+    return { paid, text: `⚠️ 尚欠 $${stat.due - paid}`, cls: 'status-partial' };
+  }
+  if (stat.absent >= 1) {
+    const paid = Math.round(stat.due * 0.6);
+    return { paid, text: `⚠️ 尚欠 $${stat.due - paid}`, cls: 'status-partial' };
+  }
+  return { paid: stat.due, text: '✅ 已繳', cls: 'status-paid' };
+}
+
+// ===== RENDER DAILY =====
+function renderDaily() {
+  const m = getMonth();
+  const grid = document.getElementById('dailyGrid');
+
+  document.getElementById('totalClasses').textContent = m.classes.length;
+
+  let html = '';
+  STUDENTS.forEach((s, si) => {
+    const stat = getStat(m.key, si);
+    const a = attendanceDB[m.key][si];
+    html += `<div class="student-row">`;
+    html += `<div class="name">${s.name}</div>`;
+    html += `<div class="day-grid">`;
+    m.classes.forEach((c, ci) => {
+      const val = a[ci] || 0;
+      let cls = 'empty', icon = '·';
+      if (val === 1) { cls = 'present'; icon = '✓'; }
+      else if (val === 2) { cls = 'absent'; icon = '✗'; }
+      else if (val === 3) { cls = 'excused'; icon = '★'; }
+      html += `<button class="day-btn ${cls}" data-si="${si}" data-ci="${ci}" data-key="${m.key}">`;
+      html += `<span class="d-day">${c.day}/${m.key.slice(5)} ${c.dow}</span>`;
+      html += `<span class="d-icon">${icon}</span>`;
+      html += `</button>`;
+    });
+    html += `</div>`;
+    const attCls = stat.absent > 2 ? 'bad' : stat.absent > 1 ? 'warn' : '';
+    html += `<div class="stat-col ${attCls}">${stat.present}/${stat.total}</div>`;
+    html += `</div>`;
+  });
+  grid.innerHTML = html;
+
+  grid.querySelectorAll('.day-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const si = parseInt(this.dataset.si);
+      const ci = parseInt(this.dataset.ci);
+      const key = this.dataset.key;
+      const cur = attendanceDB[key][si][ci] || 0;
+      attendanceDB[key][si][ci] = (cur + 1) % 4;
+      const labels = ['未設定', '出席', '缺席', '合理缺席'];
+      const c = getMonth().classes[ci];
+      showToast(`${STUDENTS[si].name} ${c.day}/${key.slice(5)} ${labels[attendanceDB[key][si][ci]]}`);
+      renderAll();
+    });
+  });
+}
+
+// ===== RENDER STUDENT =====
+function renderStudent() {
+  const pills = document.getElementById('studentPills');
+  let html = '';
+  STUDENTS.forEach((s, i) => {
+    html += `<button class="student-pill ${i === 0 ? 'active' : ''}" data-si="${i}">${s.name}</button>`;
+  });
+  pills.innerHTML = html;
+  pills.querySelectorAll('.student-pill').forEach(btn => {
+    btn.addEventListener('click', function() {
+      pills.querySelectorAll('.student-pill').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      renderStudentDetail(parseInt(this.dataset.si));
+    });
+  });
+  renderStudentDetail(0);
+}
+
+function renderStudentDetail(si) {
+  const s = STUDENTS[si];
+  const el = document.getElementById('studentDetail');
+  let html = `<div class="student-detail">`;
+  html += `<h4>👤 ${s.name} <span style="font-size:12px;font-weight:400;color:#999;">${s.cls} · 每堂 $${s.rate}</span></h4>`;
+
+  MONTHS.forEach((m, mi) => {
+    const stat = getStat(m.key, si);
+    const pmt = calcPayment(m.key, si);
+    const isCurrent = mi === currentMonthIdx;
+    const rowCls = isCurrent ? 'month-summary-row current-month' : 'month-summary-row';
+    const dayStr = m.classes.map(c => `${c.day}日(${c.dow})`).join('、');
+
+    html += `<div class="${rowCls}" data-mi="${mi}" style="cursor:pointer;">`;
+    html += `<div class="ms-month">${m.short}</div>`;
+    html += `<div class="ms-detail">${stat.present}/${stat.total} 堂出席${stat.excused > 0 ? `（豁免${stat.excused}堂）` : ''}</div>`;
+    html += `<div class="ms-fee">${pmt.text.includes('待處理') ? '—' : '$'+pmt.paid}</div>`;
+    html += `<div class="ms-status"><span class="${pmt.cls}">${pmt.text}</span></div>`;
+    html += `</div>`;
+  });
+
+  html += `<div style="margin-top:8px;font-size:11px;color:#aaa;text-align:center;">💡 點擊月份可切換檢視該月詳情</div>`;
+  html += `</div>`;
+  el.innerHTML = html;
+
+  el.querySelectorAll('[data-mi]').forEach(row => {
+    row.addEventListener('click', function() {
+      const mi = parseInt(this.dataset.mi);
+      if (!isNaN(mi)) {
+        currentMonthIdx = mi;
+        document.querySelectorAll('.tab-btn[data-tab]').forEach(b => b.classList.remove('active'));
+        document.querySelector('.tab-btn[data-tab="daily"]').classList.add('active');
+        document.querySelectorAll('.sheet-panel').forEach(p => p.classList.remove('active'));
+        document.getElementById('panel-daily').classList.add('active');
+        renderAll();
+        showToast(`已切換至 ${MONTHS[mi].label}`);
+      }
+    });
+  });
+}
+
+// ===== RENDER FEE =====
+function renderFee() {
+  const m = getMonth();
+  const container = document.getElementById('feeSummary');
+  let html = '';
+  let totalDue = 0, totalPaid = 0;
+
+  STUDENTS.forEach((s, si) => {
+    const stat = getStat(m.key, si);
+    const pmt = calcPayment(m.key, si);
+    totalDue += stat.due;
+    totalPaid += pmt.paid;
+
+    const rowCls = si === 3 ? 'unpaid' : (stat.absent >= 1 ? 'overdue' : '');
+    const detailParts = [`出席 ${stat.present}/${stat.total} 堂`];
+    if (stat.excused > 0) detailParts.push(`豁免${stat.excused}堂`);
+    if (stat.absent > 0) detailParts.push(`缺席${stat.absent}堂`);
+
+    html += `<div class="fee-row ${rowCls}">`;
+    html += `<div class="f-name">${s.name}</div>`;
+    html += `<div class="f-rate">$${s.rate}/堂</div>`;
+    html += `<div class="f-detail">${detailParts.join(' · ')}</div>`;
+    html += `<div class="f-amount">${pmt.text.includes('待處理') ? '—' : '$'+pmt.paid}</div>`;
+    html += `<div class="f-status"><span class="${pmt.cls}">${pmt.text}</span></div>`;
+    html += `</div>`;
+  });
+
+  const hasData = STUDENTS.some((_, si) => !attendanceDB[m.key][si].every(v => v === 0));
+  container.innerHTML = html;
+
+  const unpaid = totalDue - totalPaid;
+  const pct = totalDue > 0 ? Math.round((totalPaid / totalDue) * 100) : 0;
+  document.getElementById('feeTotals').innerHTML = hasData ? `
+    <div class="total-item green"><div class="label">應收總額</div><div class="num">$${totalDue.toLocaleString()}</div></div>
+    <div class="total-item orange"><div class="label">已收</div><div class="num">$${totalPaid.toLocaleString()}</div></div>
+    <div class="total-item red"><div class="label">未收</div><div class="num">$${unpaid.toLocaleString()}</div></div>
+    <div class="total-item blue"><div class="label">收費率</div><div class="num">${pct}%</div></div>
+  ` : `
+    <div class="total-item blue" style="grid-column:1/-1;"><div class="label">尚未記錄任何出席資料</div><div class="num">⏳</div></div>
+  `;
+}
+
+// ===== MONTH INDICATOR =====
+function renderMonthDots() {
+  const dots = document.getElementById('monthDots');
+  let html = '';
+  MONTHS.forEach((m, i) => {
+    const hasData = attendanceDB[m.key].some(arr => arr.some(v => v > 0));
+    const cls = i === currentMonthIdx ? 'active' : '';
+    const dc = hasData ? 'has-data' : '';
+    html += `<span class="month-dot ${cls} ${dc}"></span>`;
+  });
+  dots.innerHTML = html;
+}
+
+// ===== TOAST =====
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ===== RENDER ALL =====
+function renderAll() {
+  const m = getMonth();
+  document.getElementById('monthTitle').textContent = m.label;
+  renderMonthDots();
+  renderDaily();
+  renderStudent();
+  renderFee();
+  document.getElementById('prevMonth').disabled = (currentMonthIdx === 0);
+  document.getElementById('nextMonth').disabled = (currentMonthIdx === MONTHS.length - 1);
+}
+
+// ===== EVENTS =====
+document.getElementById('prevMonth').addEventListener('click', () => {
+  if (currentMonthIdx > 0) { currentMonthIdx--; renderAll(); showToast(`已切換至 ${MONTHS[currentMonthIdx].label}`); }
+});
+document.getElementById('nextMonth').addEventListener('click', () => {
+  if (currentMonthIdx < MONTHS.length - 1) { currentMonthIdx++; renderAll(); showToast(`已切換至 ${MONTHS[currentMonthIdx].label}`); }
+});
+
+document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.tab-btn[data-tab]').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    document.querySelectorAll('.sheet-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-' + this.dataset.tab).classList.add('active');
+    if (this.dataset.tab === 'student') renderStudent();
+  });
+});
+
+// ===== INIT =====
+renderAll();
+</script>
+
+</div>
+</body>
+</html>
