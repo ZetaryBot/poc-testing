@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>補習社系統 — 時間表 · 點名 · 學費</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: 'Noto Sans TC', -apple-system, 'PingFang HK', sans-serif;
+    background: #f0f4f8; color: #1a1a1a; min-height: 100vh;
+  }
+
+  .header {
+    background: linear-gradient(135deg, #1a73e8, #1557b0);
+    color: white; padding: 18px 18px 14px;
+  }
+  .header h1 { font-size: 20px; font-weight: 700; }
+  .header p { font-size: 12px; opacity: 0.8; margin-top: 4px; line-height: 1.5; }
+  .header-badge {
+    display: inline-block; background: rgba(255,255,255,0.18);
+    font-size: 10px; padding: 3px 12px; border-radius: 20px; margin-top: 6px;
+  }
+
+  .tab-bar {
+    display: flex; background: white;
+    border-bottom: 1px solid #e0e0e0; overflow-x: auto;
+    position: sticky; top: 0; z-index: 10;
+  }
+  .tab-btn {
+    flex: 1; padding: 14px 6px; border: none; background: transparent;
+    font-size: 12px; font-weight: 600; font-family: inherit;
+    color: #777; cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: all 0.15s; white-space: nowrap; text-align: center;
+  }
+  .tab-btn.active { color: #1a73e8; border-bottom-color: #1a73e8; background: #f8fbff; }
+
+  .month-picker {
+    display: flex; align-items: center; justify-content: space-between;
+    background: white; padding: 10px 14px;
+    border-bottom: 1px solid #e8eaed;
+  }
+  .month-picker .month-nav {
+    width: 36px; height: 36px; border-radius: 50%; border: none;
+    background: #f0f0f0; color: #555; font-size: 18px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: background 0.12s;
+    -webkit-user-select: none; user-select: none; touch-action: manipulation;
+  }
+  .month-picker .month-nav:active { background: #ddd; }
+  .month-picker .month-nav:disabled { opacity: 0.3; pointer-events: none; }
+  .month-picker .month-title {
+    font-size: 16px; font-weight: 700; color: #1a1a1a;
+  }
+  .month-picker .month-indicator {
+    display: flex; gap: 5px; align-items: center; justify-content: center; margin-top: 4px;
+  }
+  .month-dot {
+    width: 6px; height: 6px; border-radius: 50%; background: #ddd;
+    transition: all 0.2s;
+  }
+  .month-dot.active { background: #1a73e8; width: 8px; height: 8px; }
+  .month-dot.has-data { background: #66bb6a; }
+  .month-dot.active.has-data { background: #1a73e8; }
+
+  .sheet-panel { display: none; }
+  .sheet-panel.active { display: block; }
+
+  .card {
+    background: white; border-radius: 12px; margin: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06); overflow: hidden;
+  }
+  .card-header {
+    padding: 12px 14px; font-size: 13px; font-weight: 600;
+    display: flex; justify-content: space-between; align-items: center;
+    background: #f8f9fa; border-bottom: 1px solid #e8eaed;
+  }
+  .card-header .tag {
+    font-size: 10px; font-weight: 600; padding: 2px 10px; border-radius: 10px;
+    background: #e8f5e9; color: #2e7d32;
+  }
+  .card-header .tag.orange { background: #fff3e0; color: #e65100; }
+
+  /* ===== TOAST ===== */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: #323232; color: white; padding: 12px 20px;
+    border-radius: 10px; font-size: 13px; font-weight: 500;
+    opacity: 0; transition: opacity 0.3s; pointer-events: none;
+    z-index: 100; white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  }
+  .toast.show { opacity: 1; }
+
+  /* ======================== */
+  /* TAB 1: TIMETABLE         */
+  /* ======================== */
+  .class-date-card {
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .class-date-card:last-child { border-bottom: none; }
+
+  .class-date-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 14px 8px;
+    font-size: 15px; font-weight: 700; color: #1a1a1a;
+  }
+  .class-date-header .date-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .class-date-header .date-badge .dow {
+    font-size: 11px; font-weight: 500;
+    background: #e3f2fd; color: #1565c0;
+    padding: 1px 10px; border-radius: 12px;
+  }
+
+  .time-slot-section {
+    padding: 4px 14px 10px;
+  }
+  .time-slot-label {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 600; color: #666;
+    padding: 6px 0 4px;
+    border-top: 1px dashed #eee;
+    margin-top: 4px;
+  }
+  .time-slot-label:first-child { border-top: none; margin-top: 0; }
+  .time-slot-label .ts-icon { font-size: 14px; }
+
+  .student-attendance-list {
+    display: flex; flex-wrap: wrap; gap: 6px;
+  }
+  .attendance-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 5px 12px 5px 10px;
+    border-radius: 20px; font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: all 0.12s;
+    -webkit-user-select: none; user-select: none; touch-action: manipulation;
+    border: 1.5px solid transparent;
+  }
+  .attendance-chip:active { transform: scale(0.94); }
+  .attendance-chip .a-name { color: #333; }
+  .attendance-chip .a-icon { font-size: 15px; }
+
+  .attendance-chip.state-0 { background: #f5f5f5; border-color: #e0e0e0; }
+  .attendance-chip.state-0 .a-icon { color: #bbb; }
+  .attendance-chip.state-1 { background: #e8f5e9; border-color: #66bb6a; }
+  .attendance-chip.state-1 .a-icon { color: #2e7d32; }
+  .attendance-chip.state-2 { background: #ffebee; border-color: #ef9a9a; }
+  .attendance-chip.state-2 .a-icon { color: #c62828; }
+  .attendance-chip.state-3 { background: #fff3e0; border-color: #ffb74d; }
+  .attendance-chip.state-3 .a-icon { color: #e65100; }
+  /* 待選 - gray */
+  .attendance-chip.state-4 { background: #f0f0f0; border-color: #ccc; }
+  .attendance-chip.state-4 .a-icon { color: #999; }
+
+  /* Reschedule - special color when date is filled */
+  .attendance-chip.state-3.scheduled { background: #f3e5f5; border-color: #ce93d8; }
+  .attendance-chip.state-3.scheduled .a-icon { color: #7b1fa2; }
+  .attendance-chip.state-3.scheduled .a-name { color: #4a0072; }
+  .rs-arrow { color: #7b1fa2; font-weight: 700; font-size: 11px; }
+  .rs-dow-tag {
+    display: inline-block; background: #7b1fa2; color: white;
+    font-size: 9px; padding: 1px 7px; border-radius: 8px;
+    margin-left: 4px; font-weight: 600;
+  }
+
+  .reschedule-input-group {
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .reschedule-input-group input {
+    width: 70px; padding: 3px 6px; border: 1px solid #ffb74d;
+    border-radius: 8px; font-size: 11px; font-family: inherit;
+    background: #fff8e1; text-align: center;
+    outline: none;
+  }
+  .reschedule-input-group input:focus { border-color: #ff9800; box-shadow: 0 0 0 2px rgba(255,152,0,0.15); }
+  .reschedule-input-group .rs-label {
+    font-size: 10px; color: #e65100; font-weight: 600; white-space: nowrap;
+  }
+
+  .empty-slot-msg {
+    font-size: 12px; color: #bbb; padding: 6px 0;
+  }
+
+  .marking-guide {
+    display: flex; gap: 12px; padding: 10px 14px;
+    background: #f8f9fa; border-top: 1px solid #e8eaed;
+    font-size: 11px; color: #888; flex-wrap: wrap; align-items: center;
+  }
+  .marking-guide span { display: flex; align-items: center; gap: 4px; }
+  .marking-guide .dot {
+    width: 20px; height: 20px; border-radius: 50%; display: inline-flex;
+    align-items: center; justify-content: center; font-size: 11px;
+    border: 1.5px solid currentColor;
+  }
+  .marking-guide .dot.green { background: #e8f5e9; border-color: #66bb6a; color: #2e7d32; }
+  .marking-guide .dot.red { background: #ffebee; border-color: #ef9a9a; color: #c62828; }
+  .marking-guide .dot.orange { background: #fff3e0; border-color: #ffb74d; color: #e65100; }
+  .marking-guide .dot.gray { background: #f5f5f5; border-color: #e0e0e0; color: #bbb; }
+  .marking-guide .dot.gray2 { background: #f0f0f0; border-color: #ccc; color: #999; }
+  .marking-guide .dot.purple { background: #f3e5f5; border-color: #ce93d8; color: #7b1fa2; }
+
+  /* ===== TAB 2: TUITION ===== */
+  .tuition-summary-row {
+    padding: 12px 14px;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .tuition-summary-row:last-child { border-bottom: none; }
+  .tuition-summary-row .ts-main {
+    display: flex; align-items: center; gap: 8px;
+  }
+  .tuition-summary-row .ts-name { font-weight: 600; font-size: 14px; width: 52px; flex-shrink: 0; }
+  .tuition-summary-row .ts-subject { font-size: 11px; color: #888; flex: 1; }
+  .tuition-summary-row .ts-package { font-size: 13px; font-weight: 600; color: #333; white-space: nowrap; }
+  .tuition-summary-row .ts-status {
+    display: flex; align-items: center; gap: 6px;
+    margin-top: 6px; padding-left: 60px;
+  }
+  .status-btn {
+    font-size: 12px; font-weight: 500; font-family: inherit;
+    padding: 4px 12px; border-radius: 16px; border: 1.5px solid;
+    cursor: pointer; transition: all 0.12s;
+    -webkit-user-select: none; user-select: none; touch-action: manipulation;
+  }
+  .status-btn:active { transform: scale(0.94); }
+  .status-btn.paid { background: #e8f5e9; border-color: #66bb6a; color: #2e7d32; }
+  .status-btn.unpaid { background: #ffebee; border-color: #ef9a9a; color: #c62828; }
+  .status-btn.pending { background: #fff8e1; border-color: #ffd54f; color: #f57f17; }
+  .status-btn .check-icon { margin-right: 2px; }
+
+  .ts-date-input {
+    font-size: 11px; font-family: inherit; color: #555;
+    padding: 3px 8px; border: 1px solid #ddd; border-radius: 8px;
+    width: 90px; text-align: center;
+    outline: none;
+  }
+  .ts-date-input:focus { border-color: #1a73e8; box-shadow: 0 0 0 2px rgba(26,115,232,0.12); }
+  .ts-date-input:disabled { background: #f9f9f9; color: #bbb; border-color: #eee; }
+
+  .tuition-totals {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    padding: 12px 14px; background: #f8f9fa;
+  }
+  .tuition-totals .tt-item { text-align: center; padding: 8px; border-radius: 8px; }
+  .tuition-totals .tt-item .tt-label { font-size: 11px; color: #666; }
+  .tuition-totals .tt-item .tt-num { font-size: 18px; font-weight: 700; margin-top: 2px; }
+  .tuition-totals .tt-item.green { background: #e8f5e9; }
+  .tuition-totals .tt-item.green .tt-num { color: #2e7d32; }
+  .tuition-totals .tt-item.orange { background: #fff3e0; }
+  .tuition-totals .tt-item.orange .tt-num { color: #e65100; }
+  .tuition-totals .tt-item.blue { background: #e3f2fd; }
+  .tuition-totals .tt-item.blue .tt-num { color: #1565c0; }
+  .tuition-totals .tt-item.red { background: #ffebee; }
+  .tuition-totals .tt-item.red .tt-num { color: #c62828; }
+
+  /* ===== FEE GENERATION BUTTON ===== */
+  .fee-gen-btn {
+    font-size: 11px; font-family: inherit; font-weight: 600;
+    padding: 3px 10px; border-radius: 14px; border: 1.5px solid #25D366;
+    background: white; color: #25D366; cursor: pointer;
+    margin-left: 4px; transition: all 0.12s;
+    white-space: nowrap;
+  }
+  .fee-gen-btn:active { background: #25D366; color: white; }
+
+  /* ===== FEE MODAL ===== */
+  .fee-modal-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.4);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 200; padding: 20px;
+    animation: fadeIn 0.2s;
+  }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .fee-modal {
+    background: white; border-radius: 14px; padding: 20px;
+    max-width: 400px; width: 100%;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+    position: relative;
+    animation: slideUp 0.25s;
+  }
+  @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .fee-modal h3 {
+    font-size: 15px; font-weight: 700; margin-bottom: 8px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .fee-modal .msg-box {
+    background: #f8f9fa; border-radius: 8px; padding: 14px;
+    font-size: 13px; line-height: 1.7;
+    margin-bottom: 12px; border: 1px solid #e0e0e0;
+    color: #333; max-height: 280px; overflow-y: auto;
+    white-space: pre-wrap; word-break: break-word;
+  }
+  .fee-modal .msg-box .msg-label { color: #888; font-size: 11px; margin-bottom: 6px; display: block; }
+  .fee-modal .actions { display: flex; gap: 8px; }
+  .fee-modal .actions button {
+    flex: 1; padding: 10px; border-radius: 10px; border: none;
+    font-size: 13px; font-weight: 600; font-family: inherit;
+    cursor: pointer; text-align: center; transition: all 0.12s;
+  }
+  .fee-modal .actions button:active { transform: scale(0.96); }
+  .fee-modal .btn-whatsapp { background: #25D366; color: white; }
+  .fee-modal .btn-copy { background: #e3f2fd; color: #1565c0; border: 1px solid #bbdefb !important; }
+  .fee-modal .btn-close { background: #f5f5f5; color: #666; }
+  .fee-modal .btn-whatsapp:active { background: #1da851; }
+  .fee-modal .btn-copy:active { background: #bbdefb; }
+
+  /* ===== TAB 3: STUDENT PROFILE ===== */
+  .student-pills {
+    display: flex; gap: 6px; padding: 10px 14px;
+    overflow-x: auto; border-bottom: 1px solid #e8eaed;
+  }
+  .student-pill {
+    flex: none; padding: 6px 14px; font-size: 12px; font-family: inherit;
+    border: 1.5px solid #ddd; border-radius: 20px;
+    background: white; color: #555; cursor: pointer;
+    transition: all 0.12s; font-weight: 500;
+    -webkit-user-select: none; user-select: none; touch-action: manipulation;
+  }
+  .student-pill:active { transform: scale(0.95); }
+  .student-pill.active { border-color: #1a73e8; background: #e3f2fd; color: #1a73e8; font-weight: 600; }
+
+  .profile-section { padding: 14px; }
+  .profile-section h4 {
+    font-size: 14px; margin-bottom: 10px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .profile-section h4 .sub { font-size: 12px; font-weight: 400; color: #999; }
+
+  .month-history-row {
+    display: flex; align-items: center; padding: 10px 6px;
+    border-bottom: 1px solid #f5f5f5; font-size: 13px;
+    border-radius: 6px; cursor: pointer; transition: background 0.12s;
+  }
+  .month-history-row:hover { background: #f0f7ff; }
+  .month-history-row:last-child { border-bottom: none; }
+  .month-history-row .mh-month { width: 40px; flex-shrink: 0; font-weight: 600; color: #333; text-align: center; }
+  .month-history-row .mh-attendance { flex: 1; font-size: 12px; color: #666; }
+  .month-history-row .mh-package { font-size: 12px; color: #888; white-space: nowrap; }
+  .month-history-row .mh-fee { width: 60px; flex-shrink: 0; text-align: right; font-size: 13px; font-weight: 600; }
+  .month-history-row .mh-status { width: 60px; flex-shrink: 0; text-align: right; font-size: 11px; }
+  .month-history-row.current { background: #e3f2fd; border-radius: 6px; }
+
+  /* ===== BENEFITS SECTION ===== */
+  .benefits {
+    margin: 10px; padding: 16px;
+    background: linear-gradient(135deg, #e8f5e9, #f1f8e9);
+    border-radius: 12px;
+  }
+  .benefits h3 { font-size: 15px; color: #2e7d32; margin-bottom: 10px; }
+  .benefit-item { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; margin-bottom: 6px; color: #333; line-height: 1.5; }
+  .benefit-item .check { color: #2e7d32; font-weight: 700; flex-shrink: 0; }
+
+  @media (max-width: 400px) {
+    .tab-btn { font-size: 11px; padding: 12px 4px; }
+    .student-attendance-list { gap: 4px; }
+    .attendance-chip { padding: 4px 10px 4px 8px; font-size: 12px; }
+    .attendance-chip .a-icon { font-size: 13px; }
+    .tuition-summary-row .ts-name { width: 44px; font-size: 13px; }
+    .tuition-summary-row .ts-package { font-size: 12px; }
+    .month-picker .month-title { font-size: 14px; }
+    .header h1 { font-size: 18px; }
+  }
+
+  @media (min-width: 768px) {
+    body { padding: 16px; background: #e8ecf0; }
+    .container { max-width: 800px; margin: 0 auto; }
+    .header { border-radius: 14px; }
+    .tab-bar { border-radius: 14px 14px 0 0; margin-top: 10px; }
+    .card { border-radius: 0 0 14px 14px; }
+    .benefits { border-radius: 14px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<!-- HEADER -->
+<div class="header">
+  <h1>📋 時間表 · 點名 · 學費管理</h1>
+  <p>配合預繳學費制 · 支援調堂 · 每堂點名一目了然</p>
+  <span class="header-badge">⚡ 試玩版本</span>
+</div>
+
+<!-- TABS -->
+<div class="tab-bar" id="tabBar">
+  <button class="tab-btn active" data-tab="timetable">📅 時間表+點名</button>
+  <button class="tab-btn" data-tab="tuition">💰 學費月結</button>
+  <button class="tab-btn" data-tab="student">👤 學生紀錄</button>
+</div>
+
+<!-- MONTH PICKER -->
+<div class="month-picker">
+  <button class="month-nav" id="prevMonth">‹</button>
+  <div style="text-align:center;">
+    <div class="month-title" id="monthTitle">2026年1月</div>
+    <div class="month-indicator" id="monthDots"></div>
+  </div>
+  <button class="month-nav" id="nextMonth">›</button>
+</div>
+
+<!-- ======================== -->
+<!-- TAB 1: TIMETABLE          -->
+<!-- ======================== -->
+<div class="sheet-panel active" id="panel-timetable">
+  <div class="card">
+    <div class="card-header">
+      <span>📅 時間表 + 出席記錄</span>
+      <span class="tag">㩒學生名切換狀態</span>
+    </div>
+    <div id="timetableBody"></div>
+    <div class="marking-guide">
+      <span><span class="dot gray">·</span> 未點名</span>
+      <span><span class="dot green">✓</span> 出席</span>
+      <span><span class="dot red">✗</span> 缺席</span>
+      <span><span class="dot orange">🔄</span> 調堂</span>
+      <span><span class="dot gray2">○</span> 待選</span>
+      <span class="dot purple" style="display:inline-flex;align-items:center;gap:3px;border-radius:50%;">🔄</span> 已調動
+      <span style="margin-left:auto;">👆 連續㩒切換</span>
+    </div>
+  </div>
+  <div class="benefits">
+    <h3>✅ 配合你嘅實際運作</h3>
+    <div class="benefit-item"><span class="check">✓</span> 每日多個時間 slot，學生分組顯示</div>
+    <div class="benefit-item"><span class="check">✓</span> 調堂直接㩒入改日期，紫色標示已調動</div>
+    <div class="benefit-item"><span class="check">✓</span> 新增「待選」灰色標示，簽到更靈活</div>
+    <div class="benefit-item"><span class="check">✓</span> 每堂點名記錄，歷史可追溯</div>
+  </div>
+</div>
+
+<!-- ======================== -->
+<!-- TAB 2: TUITION            -->
+<!-- ======================== -->
+<div class="sheet-panel" id="panel-tuition">
+  <div class="card">
+    <div class="card-header" style="background:#fff3e0;">
+      <span>💰 預繳學費月結</span>
+      <span class="tag orange">出席率與學費脫鉤</span>
+    </div>
+    <div id="tuitionBody"></div>
+    <div id="tuitionTotals" class="tuition-totals"></div>
+  </div>
+  <div class="benefits">
+    <h3>✅ 預繳制專用設計</h3>
+    <div class="benefit-item"><span class="check">✓</span> 每月頭已收足學費，唔使對數</div>
+    <div class="benefit-item"><span class="check">✓</span> 特殊情況下次扣減</div>
+    <div class="benefit-item"><span class="check">✓</span> 付款日期可編輯記錄</div>
+    <div class="benefit-item"><span class="check">✓</span> 一鍵生成學費通知 + WhatsApp 傳送</div>
+  </div>
+</div>
+
+<!-- ======================== -->
+<!-- TAB 3: STUDENT            -->
+<!-- ======================== -->
+<div class="sheet-panel" id="panel-student">
+  <div class="card">
+    <div class="card-header">
+      <span>👤 學生個人月結紀錄</span>
+      <span class="tag">📌 點名後自動更新</span>
+    </div>
+    <div class="student-pills" id="studentPills"></div>
+    <div id="studentProfile"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ===== FEE MODAL TEMPLATE ===== -->
+<div id="feeModalContainer"></div>
+
+<script>
+// ===================================================================
+// DATA MODEL
+// ===================================================================
+
+// ---- Time Slots ----
+const TIME_SLOTS = [
+  { id: '1100', label: '11:00 - 12:00' },
+  { id: '1200', label: '12:00 - 13:00' },
+  { id: '1400', label: '14:00 - 15:00' },
+  { id: '1600', label: '16:00 - 17:00' },
+  { id: '1800', label: '18:00 - 19:00' },
+];
+
+// ---- Students ----
+// Each student has a fixed time slot and optional phone number
+const STUDENTS = [
+  { name: '小明', subject: 'F4-6 ENG', timeSlot: '1200', phone: '' },
+  { name: '小美', subject: 'F1-3 ENG', timeSlot: '1400', phone: '' },
+  { name: '大文', subject: 'F4-6 ENG', timeSlot: '1200', phone: '' },
+  { name: '小麗', subject: 'F1-3 ENG', timeSlot: '1400', phone: '' },
+  { name: '阿強', subject: 'F4-6 ENG', timeSlot: '1200', phone: '' },
+  { name: '嘉欣', subject: 'F1-3 ENG', timeSlot: '1400', phone: '' },
+  { name: '子軒', subject: 'F2 Sci',  timeSlot: '1600', phone: '' },
+  { name: '芷晴', subject: 'F2 Sci',  timeSlot: '1600', phone: '' },
+  { name: '俊傑', subject: 'F5 Math', timeSlot: '1800', phone: '' },
+  { name: '雅文', subject: 'F5 Math', timeSlot: '1800', phone: '' },
+  { name: 'Oscar Leung', subject: 'Senior Secondary English', timeSlot: '1100', phone: '97129969' },
+];
+
+// ---- Months ----
+const MONTHS = [
+  {
+    key: '2026-01', label: '2026年1月', short: '1月',
+    classes: [
+      { date: '2026-01-03', day: '3', dow: '六' },
+      { date: '2026-01-10', day: '10', dow: '六' },
+      { date: '2026-01-17', day: '17', dow: '六' },
+      { date: '2026-01-24', day: '24', dow: '六' },
+      { date: '2026-01-31', day: '31', dow: '六' },
+    ]
+  },
+  {
+    key: '2026-02', label: '2026年2月', short: '2月',
+    classes: [
+      { date: '2026-02-07', day: '7', dow: '六' },
+      { date: '2026-02-14', day: '14', dow: '六' },
+      { date: '2026-02-21', day: '21', dow: '六' },
+      { date: '2026-02-28', day: '28', dow: '六' },
+    ]
+  },
+  {
+    key: '2026-03', label: '2026年3月', short: '3月',
+    classes: [
+      { date: '2026-03-07', day: '7', dow: '六' },
+      { date: '2026-03-14', day: '14', dow: '六' },
+      { date: '2026-03-21', day: '21', dow: '六' },
+      { date: '2026-03-28', day: '28', dow: '六' },
+    ]
+  },
+  {
+    key: '2026-04', label: '2026年4月', short: '4月',
+    classes: [
+      { date: '2026-04-04', day: '4', dow: '六' },
+      { date: '2026-04-11', day: '11', dow: '六' },
+      { date: '2026-04-18', day: '18', dow: '六' },
+      { date: '2026-04-25', day: '25', dow: '六' },
+    ]
+  },
+  {
+    key: '2026-06', label: '2026年6月', short: '6月',
+    classes: [
+      { date: '2026-06-06', day: '6', dow: '六' },
+      { date: '2026-06-13', day: '13', dow: '六' },
+      { date: '2026-06-20', day: '20', dow: '六' },
+      { date: '2026-06-27', day: '27', dow: '六' },
+    ]
+  },
+  {
+    key: '2026-07', label: '2026年7月', short: '7月',
+    classes: [
+      { date: '2026-07-04', day: '4', dow: '六' },
+      { date: '2026-07-11', day: '11', dow: '六' },
+      { date: '2026-07-18', day: '18', dow: '六' },
+      { date: '2026-07-25', day: '25', dow: '六' },
+    ]
+  },
+  {
+    key: '2026-08', label: '2026年8月', short: '8月',
+    classes: [
+      { date: '2026-08-01', day: '1', dow: '六' },
+      { date: '2026-08-08', day: '8', dow: '六' },
+      { date: '2026-08-15', day: '15', dow: '六' },
+      { date: '2026-08-22', day: '22', dow: '六' },
+    ]
+  },
+];
+
+// ---- Attendance Data ----
+// attendance[monthKey][studentIndex][classIndex] = state
+// state: 0=unset(·), 1=present(✓), 2=absent(✗), 3=rescheduled(🔄), 4=待選(○)
+const attendanceDB = {};
+
+// ---- Reschedule Data ----
+// reschedule[monthKey][studentIndex][classIndex] = 'YYYY-MM-DD'
+const rescheduleDB = {};
+
+// ---- Tuition Data ----
+// tuition[monthKey][studentIndex] = {
+//   package: 1480,    // monthly package fee
+//   sessions: 4,      // number of classes in package
+//   status: 'paid',   // 'paid' | 'unpaid' | 'pending'
+//   paidDate: '2026-01-01'
+// }
+const tuitionDB = {};
+
+// ---- Package defaults per student ----
+const PACKAGE_DEFAULTS = {
+  '小明': { package: 1480, sessions: 5 },
+  '小美': { package: 1850, sessions: 4 },
+  '大文': { package: 1480, sessions: 5 },
+  '小麗': { package: 1850, sessions: 4 },
+  '阿強': { package: 1480, sessions: 5 },
+  '嘉欣': { package: 1850, sessions: 4 },
+  '子軒': { package: 1200, sessions: 4 },
+  '芷晴': { package: 1200, sessions: 4 },
+  '俊傑': { package: 1600, sessions: 4 },
+  '雅文': { package: 1600, sessions: 4 },
+  'Oscar Leung': { package: 1480, sessions: 4 },
+};
+
+// ===================================================================
+// INITIALIZATION
+// ===================================================================
+
+MONTHS.forEach(m => {
+  attendanceDB[m.key] = STUDENTS.map(() => m.classes.map(() => 0));
+  rescheduleDB[m.key] = STUDENTS.map(() => m.classes.map(() => ''));
+  tuitionDB[m.key] = STUDENTS.map((s) => {
+    const pkg = PACKAGE_DEFAULTS[s.name] || { package: 1500, sessions: 4 };
+    return { package: pkg.package, sessions: pkg.sessions, status: 'paid', paidDate: m.key + '-01' };
+  });
+});
+
+// ---- Seed data: January attendance ----
+let a1 = attendanceDB['2026-01'];
+a1[0] = [1,1,1,1,1];  // 小明
+a1[1] = [1,1,1,1,1];  // 小美
+a1[2] = [1,1,1,1,1];  // 大文
+a1[3] = [1,1,1,1,1];  // 小麗
+a1[4] = [1,2,1,1,3];  // 阿強 (class2 absent, class5 rescheduled)
+a1[5] = [1,1,3,1,1];  // 嘉欣 (class3 excused)
+a1[6] = [1,1,1,1,1];  // 子軒
+a1[7] = [1,1,1,1,1];  // 芷晴
+a1[8] = [1,1,1,1,1];  // 俊傑
+a1[9] = [1,1,1,1,1];  // 雅文
+
+// ---- Reschedule seed ----
+let r1 = rescheduleDB['2026-01'];
+r1[4][4] = '2026-02-01';  // 阿強 class5 → rescheduled to Feb 1
+
+// ---- Seed: February attendance (partial) ----
+let a2 = attendanceDB['2026-02'];
+a2[0] = [1,1,0,0];
+a2[1] = [1,1,0,0];
+a2[2] = [1,1,0,0];
+a2[3] = [1,1,0,0];
+a2[4] = [1,1,0,0];
+a2[5] = [1,1,0,0];
+a2[6] = [1,1,0,0];
+a2[7] = [1,1,0,0];
+a2[8] = [1,1,0,0];
+a2[9] = [1,1,0,0];
+
+// ---- Seed: Oscar Leung August ----
+let osIdx = STUDENTS.findIndex(s => s.name === 'Oscar Leung');
+let a8 = attendanceDB['2026-08'];
+if (osIdx >= 0 && a8) {
+  a8[osIdx] = [1,1,1,4];  // present, present, present, 待選
+}
+
+// ---- Seed: tuition - mark some as unpaid for demo ----
+let t1 = tuitionDB['2026-01'];
+t1[4].status = 'unpaid';  // 阿強 unpaid
+t1[4].paidDate = '';
+t1[8].status = 'pending';  // 俊傑 pending
+t1[8].paidDate = '';
+
+let t2 = tuitionDB['2026-02'];
+t2[4].status = 'unpaid';
+t2[4].paidDate = '';
+
+// ===================================================================
+// STATE
+// ===================================================================
+let currentMonthIdx = 6;  // Default to August (index 6) for Oscar demo
+
+function getMonth() { return MONTHS[currentMonthIdx]; }
+
+function getStudentIndex(name) {
+  return STUDENTS.findIndex(s => s.name === name);
+}
+
+// ---- Day-of-week helpers ----
+const DOW_MAP = { 'Sun': '日', 'Mon': '一', 'Tue': '二', 'Wed': '三', 'Thu': '四', 'Fri': '五', 'Sat': '六' };
+const DOW_EN = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+function getDowFromDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d)) return '';
+  return DOW_MAP[DOW_EN[d.getDay()]] || '';
+}
+
+function formatDateDisplay(dateStr) {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  return parseInt(parts[2]) + '/' + parseInt(parts[1]);
+}
+
+function dayOfWeek(dow) {
+  return DOW_MAP[dow] || dow;
+}
+
+// ===================================================================
+// TOAST
+// ===================================================================
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ===================================================================
+// RENDER: MONTH DOTS
+// ===================================================================
+function renderMonthDots() {
+  const dots = document.getElementById('monthDots');
+  let html = '';
+  MONTHS.forEach((m, i) => {
+    const hasData = attendanceDB[m.key].some(arr => arr.some(v => v > 0));
+    const cls = i === currentMonthIdx ? 'active' : '';
+    const dc = hasData ? 'has-data' : '';
+    html += `<span class="month-dot ${cls} ${dc}"></span>`;
+  });
+  dots.innerHTML = html;
+}
+
+// ===================================================================
+// RENDER: TIMETABLE (Tab 1)
+// ===================================================================
+function renderTimetable() {
+  const m = getMonth();
+  const body = document.getElementById('timetableBody');
+  let html = '';
+
+  // Info bar
+  html += `<div style="padding:10px 14px;background:#f8fbff;border-bottom:1px solid #e8eaed;font-size:12px;color:#555;display:flex;gap:16px;flex-wrap:wrap;">
+    <span>📌 共 <strong>${m.classes.length}</strong> 堂</span>
+    <span>🧑‍🎓 <strong>${STUDENTS.length}</strong> 位學生</span>
+    <span>🕐 ${TIME_SLOTS.length} 個時段</span>
+  </div>`;
+
+  // Each class date
+  m.classes.forEach((c, ci) => {
+    html += `<div class="class-date-card">`;
+    html += `<div class="class-date-header">`;
+    html += `<span class="date-badge">📅 ${c.day}/${m.key.slice(5)} <span class="dow">${c.dow}</span></span>`;
+    // Count present today
+    let presentCount = 0, totalMarked = 0;
+    STUDENTS.forEach((s, si) => {
+      const v = attendanceDB[m.key][si][ci] || 0;
+      if (v > 0) totalMarked++;
+      if (v === 1) presentCount++;
+    });
+    html += `<span style="font-size:11px;color:#888;">出席 ${presentCount}/${totalMarked}</span>`;
+    html += `</div>`;
+
+    // Group students by time slot
+    TIME_SLOTS.forEach(ts => {
+      const slotStudents = STUDENTS.filter(s => s.timeSlot === ts.id);
+      if (slotStudents.length === 0) return;
+
+      html += `<div class="time-slot-section">`;
+      html += `<div class="time-slot-label"><span class="ts-icon">🕐</span> ${ts.label}</div>`;
+      html += `<div class="student-attendance-list">`;
+
+      slotStudents.forEach(s => {
+        const si = STUDENTS.indexOf(s);
+        const val = attendanceDB[m.key][si][ci] || 0;
+        const rs = rescheduleDB[m.key][si][ci] || '';
+
+        let icon = '·';
+        if (val === 1) icon = '✓';
+        else if (val === 2) icon = '✗';
+        else if (val === 3) icon = '🔄';
+        else if (val === 4) icon = '○';
+
+        // Check if reschedule has a date filled -> add 'scheduled' class
+        const hasRs = val === 3 && rs.length > 0;
+        const extraClass = hasRs ? 'scheduled' : '';
+
+        html += `<div class="attendance-chip state-${val} ${extraClass}" data-si="${si}" data-ci="${ci}" data-key="${m.key}">`;
+        html += `<span class="a-name">${s.name}</span>`;
+        html += `<span class="a-icon">${icon}</span>`;
+        if (val === 3) {
+          html += `<span class="reschedule-input-group">`;
+          html += `<input type="text" class="rs-date-input" value="${rs}" placeholder="dd/mm" data-si="${si}" data-ci="${ci}" data-key="${m.key}" maxlength="5">`;
+          if (rs) {
+            const newDow = getDowFromDate(rs);
+            const newDowDisplay = newDow ? `<span class="rs-dow-tag">${newDow}</span>` : '';
+            html += `<span class="rs-arrow">→ ${formatDateDisplay(rs)}</span>${newDowDisplay}`;
+          } else {
+            html += `<span class="rs-label">填日期</span>`;
+          }
+          html += `</span>`;
+        }
+        html += `</div>`;
+      });
+
+      html += `</div>`; // student-attendance-list
+      html += `</div>`; // time-slot-section
+    });
+
+    html += `</div>`; // class-date-card
+  });
+
+  body.innerHTML = html;
+
+  // ---- Event: click attendance chip ----
+  body.querySelectorAll('.attendance-chip[data-si]').forEach(el => {
+    el.addEventListener('click', function(e) {
+      // Don't trigger if clicking on the date input
+      if (e.target.classList.contains('rs-date-input')) return;
+      const si = parseInt(this.dataset.si);
+      const ci = parseInt(this.dataset.ci);
+      const key = this.dataset.key;
+      const cur = attendanceDB[key][si][ci] || 0;
+      // Cycle: 0→1→2→3→4→1→2→3→4...
+      const next = cur === 0 ? 1 : (cur === 1 ? 2 : (cur === 2 ? 3 : (cur === 3 ? 4 : 1)));
+      attendanceDB[key][si][ci] = next;
+      if (next !== 3) {
+        rescheduleDB[key][si][ci] = ''; // Clear reschedule date
+      }
+      renderAll();
+      const labels = ['未點名', '出席', '缺席', '調堂', '待選'];
+      const c = getMonth().classes[ci];
+      showToast(`${STUDENTS[si].name} ${c.day}/${key.slice(5)} → ${labels[next]}`);
+    });
+  });
+
+  // ---- Event: reschedule date input ----
+  body.querySelectorAll('.rs-date-input').forEach(inp => {
+    inp.addEventListener('input', function() {
+      const si = parseInt(this.dataset.si);
+      const ci = parseInt(this.dataset.ci);
+      const key = this.dataset.key;
+      rescheduleDB[key][si][ci] = this.value;
+      // Re-render to update the label
+      renderAll();
+    });
+    inp.addEventListener('focus', function() {
+      this.select();
+    });
+  });
+}
+
+// ===================================================================
+// RENDER: TUITION (Tab 2)
+// ===================================================================
+function renderTuition() {
+  const m = getMonth();
+  const body = document.getElementById('tuitionBody');
+  let html = '';
+
+  let totalExpected = 0;
+  let totalPaid = 0;
+  let paidCount = 0;
+
+  STUDENTS.forEach((s, si) => {
+    const t = tuitionDB[m.key][si] || { package: 0, sessions: 0, status: 'pending', paidDate: '' };
+    totalExpected += t.package;
+    if (t.status === 'paid') { totalPaid += t.package; paidCount++; }
+
+    const statusLabels = { paid: '✅ 已繳', unpaid: '❌ 未繳', pending: '⏳ 待處理' };
+    const statusClasses = { paid: 'paid', unpaid: 'unpaid', pending: 'pending' };
+
+    html += `<div class="tuition-summary-row">`;
+    html += `<div class="ts-main">`;
+    html += `<span class="ts-name">${s.name}</span>`;
+    html += `<span class="ts-subject">${s.subject}</span>`;
+    html += `<span class="ts-package">$${t.package.toLocaleString()}/${t.sessions}堂</span>`;
+    // Fee generation button
+    html += `<button class="fee-gen-btn" data-action="gen-fee" data-si="${si}" data-key="${m.key}">📄 WhatsApp</button>`;
+    html += `</div>`;
+    html += `<div class="ts-status">`;
+    // Status toggle button
+    html += `<button class="status-btn ${statusClasses[t.status]}" data-action="toggle-status" data-si="${si}" data-key="${m.key}">`;
+    html += `<span class="check-icon">${t.status === 'paid' ? '✅' : t.status === 'unpaid' ? '❌' : '⏳'}</span>`;
+    html += ` ${statusLabels[t.status]}`;
+    html += `</button>`;
+    // Date input
+    html += `<input type="text" class="ts-date-input" value="${t.paidDate}" placeholder="YYYY-MM-DD" data-si="${si}" data-key="${m.key}" data-field="paidDate" ${t.status !== 'paid' ? 'disabled' : ''}>`;
+    html += `</div>`;
+    html += `</div>`;
+  });
+
+  body.innerHTML = html;
+
+  // Totals
+  const pct = totalExpected > 0 ? Math.round((totalPaid / totalExpected) * 100) : 0;
+  const unpaid = totalExpected - totalPaid;
+  document.getElementById('tuitionTotals').innerHTML = `
+    <div class="tt-item blue"><div class="tt-label">學生人數</div><div class="tt-num">${STUDENTS.length}</div></div>
+    <div class="tt-item green"><div class="tt-label">應收總額</div><div class="tt-num">$${totalExpected.toLocaleString()}</div></div>
+    <div class="tt-item orange"><div class="tt-label">已收</div><div class="tt-num">$${totalPaid.toLocaleString()}</div></div>
+    <div class="tt-item red"><div class="tt-label">未收</div><div class="tt-num">$${unpaid.toLocaleString()} (${paidCount}/${STUDENTS.length}人)</div></div>
+  `;
+
+  // ---- Event: toggle payment status ----
+  body.querySelectorAll('[data-action="toggle-status"]').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const si = parseInt(this.dataset.si);
+      const key = this.dataset.key;
+      const cur = tuitionDB[key][si].status;
+      const cycle = { paid: 'unpaid', unpaid: 'pending', pending: 'paid' };
+      tuitionDB[key][si].status = cycle[cur];
+      if (tuitionDB[key][si].status === 'paid' && !tuitionDB[key][si].paidDate) {
+        tuitionDB[key][si].paidDate = key + '-01';
+      }
+      renderAll();
+      showToast(`${STUDENTS[si].name} → ${tuitionDB[key][si].status === 'paid' ? '已繳' : tuitionDB[key][si].status === 'unpaid' ? '未繳' : '待處理'}`);
+    });
+  });
+
+  // ---- Event: date input ----
+  body.querySelectorAll('.ts-date-input').forEach(inp => {
+    inp.addEventListener('change', function() {
+      const si = parseInt(this.dataset.si);
+      const key = this.dataset.key;
+      tuitionDB[key][si].paidDate = this.value;
+      showToast(`更新付款日期`);
+    });
+    inp.addEventListener('focus', function() {
+      if (!this.disabled) this.select();
+    });
+  });
+
+  // ---- Event: generate fee notification ----
+  body.querySelectorAll('[data-action="gen-fee"]').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const si = parseInt(this.dataset.si);
+      const key = this.dataset.key;
+      showFeeModal(si, key);
+    });
+  });
+}
+
+// ===================================================================
+// FEE NOTIFICATION MODAL
+// ===================================================================
+function showFeeModal(si, monthKey) {
+  const s = STUDENTS[si];
+  const m = MONTHS.find(mo => mo.key === monthKey);
+  if (!m) return;
+  const t = tuitionDB[monthKey][si];
+  if (!t) return;
+
+  // Get attendance data for this student + month
+  const a = attendanceDB[monthKey][si];
+  const presentCount = a.filter(v => v === 1).length;
+  const totalClasses = m.classes.length;
+
+  // Build date list
+  const dateList = m.classes.map((c, ci) => {
+    const val = a[ci] || 0;
+    const rs = rescheduleDB[monthKey][si][ci] || '';
+    let suffix = '';
+    if (val === 3 && rs) {
+      const newDow = getDowFromDate(rs);
+      const shortDate = formatDateDisplay(rs);
+      suffix = `（調至${shortDate}${newDow ? ' ' + newDow : ''}）`;
+    } else if (val === 2) {
+      suffix = '（缺席）';
+    } else if (val === 4) {
+      suffix = '（待選）';
+    }
+    return `${c.day}/${monthKey.slice(5)}${suffix}`;
+  });
+
+  // Build the message text
+  // Extract year and month number from month key e.g. '2026-08' → '2026年8月'
+  const parts = monthKey.split('-');
+  const monthNum = parseInt(parts[1]);
+  const displayLabel = `${parts[0]}年${monthNum}月`;
+  const timeSlot = TIME_SLOTS.find(ts => ts.id === s.timeSlot);
+  const timeLabel = timeSlot ? timeSlot.label : s.timeSlot;
+  const dowLabel = m.classes.length > 0 ? `星期${m.classes[0].dow}` : '';
+
+  const msg = `您好，以下是LPC Language Learning Centre 學費繳交提示通知：
+
+學生姓名：${s.name}
+報讀課程：${s.subject}
+年份月份：${displayLabel}
+星期時間：${dowLabel} ${timeLabel}
+預計堂數：${totalClasses}
+上課日期：${dateList.join('；')}
+應繳學費：$${t.package.toLocaleString()}
+
+學費可透過現金或電子方式支付，如有任何疑問，歡迎隨時查詢。`;
+
+  // Build WhatsApp link
+  const phone = s.phone || '';
+  const hasPhone = phone.length > 0;
+  const waNumber = '852' + phone;
+  const waLink = `https://wa.me/${waNumber}?text=${encodeURIComponent(msg)}`;
+
+  // Render modal
+  const container = document.getElementById('feeModalContainer');
+  let modalHtml = `
+  <div class="fee-modal-overlay" id="feeModalOverlay">
+    <div class="fee-modal">
+      <h3>📄 學費通知 — ${s.name}</h3>
+      <div class="msg-box">${msg}</div>
+      <div class="actions">
+        <button class="btn-copy" id="feeCopyBtn">📋 複製</button>
+        ${hasPhone ? `<button class="btn-whatsapp" id="feeWaBtn">📱 WhatsApp</button>` : ''}
+        <button class="btn-close" id="feeCloseBtn">關閉</button>
+      </div>
+    </div>
+  </div>`;
+  container.innerHTML = modalHtml;
+
+  // Bind events
+  document.getElementById('feeModalOverlay').addEventListener('click', function(e) {
+    if (e.target === this) closeFeeModal();
+  });
+  document.getElementById('feeCloseBtn').addEventListener('click', closeFeeModal);
+
+  if (hasPhone) {
+    document.getElementById('feeWaBtn').addEventListener('click', function() {
+      window.open(waLink, '_blank');
+      showToast('已開啟 WhatsApp');
+      closeFeeModal();
+    });
+  }
+
+  document.getElementById('feeCopyBtn').addEventListener('click', function() {
+    navigator.clipboard.writeText(msg).then(() => {
+      showToast('已複製到剪貼簿 ✅');
+    }).catch(() => {
+      // Fallback for non-HTTPS
+      const ta = document.createElement('textarea');
+      ta.value = msg;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      showToast('已複製到剪貼簿 ✅');
+    });
+  });
+}
+
+function closeFeeModal() {
+  document.getElementById('feeModalContainer').innerHTML = '';
+}
+
+// ===================================================================
+// RENDER: STUDENT PROFILE (Tab 3)
+// ===================================================================
+function renderStudentPills() {
+  const pills = document.getElementById('studentPills');
+  let html = '';
+  STUDENTS.forEach((s, i) => {
+    const active = i === 0 ? 'active' : '';
+    html += `<button class="student-pill ${active}" data-si="${i}">${s.name}</button>`;
+  });
+  pills.innerHTML = html;
+
+  pills.querySelectorAll('.student-pill').forEach(btn => {
+    btn.addEventListener('click', function() {
+      pills.querySelectorAll('.student-pill').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      renderStudentProfile(parseInt(this.dataset.si));
+    });
+  });
+
+  renderStudentProfile(0);
+}
+
+function renderStudentProfile(si) {
+  const s = STUDENTS[si];
+  const el = document.getElementById('studentProfile');
+  let html = `<div class="profile-section">`;
+  html += `<h4>👤 ${s.name} <span class="sub">${s.subject} · 🕐 ${TIME_SLOTS.find(ts => ts.id === s.timeSlot)?.label || s.timeSlot}${s.phone ? ' · 📱 ' + s.phone : ''}</span></h4>`;
+
+  MONTHS.forEach((m, mi) => {
+    const t = tuitionDB[m.key][si];
+    const a = attendanceDB[m.key][si];
+
+    const present = a.filter(v => v === 1).length;
+    const absent = a.filter(v => v === 2).length;
+    const rescheduled = a.filter(v => v === 3).length;
+    const pending = a.filter(v => v === 4).length;
+    const unset = a.filter(v => v === 0).length;
+    const total = a.length;
+
+    const statusLabels = { paid: '✅ 已繳', unpaid: '❌ 未繳', pending: '⏳ 待處理' };
+    const statusCls = { paid: 'status-paid', unpaid: 'status-unpaid', pending: 'status-partial' };
+
+    const isCurrent = mi === currentMonthIdx;
+    const rowCls = isCurrent ? 'month-history-row current' : 'month-history-row';
+
+    let detailParts = [];
+    if (present > 0) detailParts.push(`出席${present}堂`);
+    if (absent > 0) detailParts.push(`缺席${absent}堂`);
+    if (rescheduled > 0) detailParts.push(`調堂${rescheduled}堂`);
+    if (pending > 0) detailParts.push(`待選${pending}堂`);
+    if (unset > 0) detailParts.push(`${unset}堂未點名`);
+    const detail = detailParts.join(' · ') || '未有紀錄';
+
+    html += `<div class="${rowCls}" data-mi="${mi}">`;
+    html += `<div class="mh-month">${m.short}</div>`;
+    html += `<div class="mh-attendance">${detail}</div>`;
+    html += `<div class="mh-package">${t.sessions}堂</div>`;
+    html += `<div class="mh-fee">$${t.package.toLocaleString()}</div>`;
+    html += `<div class="mh-status"><span style="color:${t.status === 'paid' ? '#2e7d32' : t.status === 'unpaid' ? '#c62828' : '#e65100'};font-size:11px;">${statusLabels[t.status]}</span></div>`;
+    html += `</div>`;
+  });
+
+  html += `</div>`;
+  el.innerHTML = html;
+
+  // Click month row to switch to timetable view
+  el.querySelectorAll('[data-mi]').forEach(row => {
+    row.addEventListener('click', function() {
+      const mi = parseInt(this.dataset.mi);
+      if (!isNaN(mi)) {
+        currentMonthIdx = mi;
+        switchTab('timetable');
+      }
+    });
+  });
+}
+
+// ===================================================================
+// TAB SWITCHING
+// ===================================================================
+function switchTab(tabName) {
+  document.querySelectorAll('.tab-btn[data-tab]').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.tab-btn[data-tab="${tabName}"]`).classList.add('active');
+  document.querySelectorAll('.sheet-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + tabName).classList.add('active');
+  if (tabName === 'student') renderStudentPills();
+  renderAll();
+}
+
+// ===================================================================
+// RENDER ALL
+// ===================================================================
+function renderAll() {
+  const m = getMonth();
+  document.getElementById('monthTitle').textContent = m.label;
+  renderMonthDots();
+
+  // Only render visible tab content
+  const activeTab = document.querySelector('.tab-btn.active')?.dataset.tab || 'timetable';
+  if (activeTab === 'timetable' || !document.querySelector('.sheet-panel.active')) {
+    renderTimetable();
+  }
+  if (activeTab === 'tuition') {
+    renderTuition();
+  }
+  if (activeTab === 'student') {
+    renderStudentPills();
+  }
+
+  document.getElementById('prevMonth').disabled = (currentMonthIdx === 0);
+  document.getElementById('nextMonth').disabled = (currentMonthIdx === MONTHS.length - 1);
+}
+
+// ===================================================================
+// EVENT BINDING
+// ===================================================================
+document.getElementById('prevMonth').addEventListener('click', () => {
+  if (currentMonthIdx > 0) { currentMonthIdx--; renderAll(); showToast(`已切換至 ${MONTHS[currentMonthIdx].label}`); }
+});
+document.getElementById('nextMonth').addEventListener('click', () => {
+  if (currentMonthIdx < MONTHS.length - 1) { currentMonthIdx++; renderAll(); showToast(`已切換至 ${MONTHS[currentMonthIdx].label}`); }
+});
+
+document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
+  btn.addEventListener('click', function() {
+    switchTab(this.dataset.tab);
+  });
+});
+
+// ===================================================================
+// INIT
+// ===================================================================
+renderAll();
+</script>
+
+</div>
+</body>
+</html>
